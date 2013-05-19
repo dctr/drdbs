@@ -1,0 +1,96 @@
+#!/bin/sh
+#
+# drdbs - dctr's backup script using rdiff-backup
+# Please report issues to David Christ <david.christ@uni-trier.de>.
+
+
+ETC="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../etc/"
+
+source $ETC/drdbs.conf
+EXCLUDEFILE="$ETC/drdbs.exclude"
+
+LOGFILE="/tmp/drdbs.log"
+ERROR=0
+
+exitOnErr() {
+	# TODO Find a better storage.
+	cp $LOGFILE /root/drdbs_failed.log
+	exit $1
+}
+
+echo "========================================================================" &> $LOGFILE
+echo " Backup created at `date` using rdiff-backup" &>> $LOGFILE
+echo "========================================================================" &>> $LOGFILE
+
+# Mount target if necessary
+if [[ -n $MOUNTTARGETDEV ]]; then
+	echo "Mounting $MOUNTTARGETDEV at $TARGET" &>> $LOGFILE
+	mount $MOUNTTARGETDEV $TARGET &>> $LOGFILE
+	if [[ $? -ne 0 ]]; then
+		exitOnErr $?
+	fi
+	echo "========================================================================" &>> $LOGFILE
+fi
+
+# Save the package list.
+echo "Replay your package list with the following command:" &>> $LOGFILE
+case $PACKAGEMANAGER in
+	yaourt)
+		echo "yaourt -S --needed $(yaourt -Qeq | tr '\n' ' ')" &>> $LOGFILE
+		;;
+	pacman)
+		# In contrast to the yaourt line, this one skips foreign packages, probably installed form AUR
+		local LIST=pacman -Qqe | grep -vx "$(pacman -Qqm)"
+		echo "pacman -S --needed $(pacman -Qqe | grep -vx "$(pacman -Qqm)" | tr '\n' ' ')" &>> $LOGFILE
+		;;
+	aptitude)
+		echo "aptitude install $(aptitude search '~i !~M' | cut -d" " -f4 | sort -u | tr '\n' ' ')" &>> $LOGFILE
+		;;
+	apt)
+		echo "apt-get install $(apt-mark showmanual | tr '\n' ' ')" &>> $LOGFILE
+		;;
+	*)
+		echo "ERROR: Package manger not found."
+		;;
+esac
+if [[ $? -ne 0 ]]; then
+	exitOnErr $?
+fi
+echo "========================================================================" &>> $LOGFILE
+
+if [[ -f $EXCLUDEFILE ]]; then
+	EXCLUDE="--exclude-globbing-filelist $EXCLUDEFILE"
+	echo "Files excluded:" &>> $LOGFILE
+	cat $EXCLUDEFILE &>> $LOGFILE
+	echo "========================================================================" &>> $LOGFILE
+else
+	EXCLUDE=""
+fi
+
+# Do the backup.
+rdiff-backup --backup-mode --print-statistics --verbosity 3 $EXCLUDE $SOURCE $TARGET &>> $LOGFILE
+if [[ $? -ne 0 ]]; then
+	exitOnErr $?
+fi
+echo "========================================================================" &>> $LOGFILE
+rdiff-backup --print-statistics --verbosity 3 --remove-older-than $KEEP $TARGET &>> $LOGFILE
+if [[ $? -ne 0 ]]; then
+	exitOnErr $?
+fi
+echo "========================================================================" &>> $LOGFILE
+
+# Unmount target if necessary
+if [[ -n $MOUNTTARGETDEV ]]; then
+	echo "Unmounting $TARGET" &>> $LOGFILE
+	sync
+	umount $TARGET &>> $LOGFILE
+	if [[ $? -ne 0 ]]; then
+		exitOnErr $?
+	fi
+	echo "========================================================================" &>> $LOGFILE
+fi
+
+rm $LOGFILE
+
+echo " Finished at `date`" &>> $LOGFILE
+echo "========================================================================" &>> $LOGFILE
