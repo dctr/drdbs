@@ -9,7 +9,6 @@ ETC="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../etc/"
 source $ETC/drdbs.conf
 EXCLUDEFILE="$ETC/drdbs.exclude"
 
-LOGFILE="/tmp/drdbs.log"
 ERROR=0
 
 exitOnErr() {
