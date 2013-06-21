@@ -33,8 +33,8 @@ This is the most important part: Select, what you want to include or exclude in 
 
 - Lines starting with *-* mean "exclude".
 - Lines starting with *+* mean "include"
-- *\** matches anything but "/", therefore *\** means "a folder or file name" but not "any number of folder nesting"
-- *\*\** matches "/" too, so *\*\*/foo* means "any file foo in any folder of any nesting depth"
+- \* matches anything but "/", therefore \* means "a folder or file name" but not "any number of folder nesting"
+- \*\* matches "/" too, so \*\*/foo means "any file foo in any folder of any nesting depth"
 
 ### Creating your own config
 
