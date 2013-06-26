@@ -4,11 +4,14 @@
 - **/.DS_Store
 - **/.gvfs
 - **/.thumbnails
+- **/*~
 - **/._*
 - **/*.lock
+- **/*.out
+- **/*.swp
 - **/desktop.ini
 - **/Thumbs.db
-- /media/BigFiles/DontBackup
+- /media/BigFiles/DonotBackup
 - /var/cache/**
 - /var/lock/**
 - /var/run/**

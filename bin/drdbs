@@ -1,27 +1,36 @@
 #!/bin/sh
 #
-# drdbs - dctr's backup script using rdiff-backup
+# drdbs - dctr's rdiff-backup script
 # Please report issues to David Christ <david.christ@uni-trier.de>.
 
 
+# TODO: Search default path's: /etc, /usr/etc, /usr/local/etc
 ETC="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../etc/"
 
+# Defaults
+LOGFILE="/tmp/drdbs.log"
+
+# Overwrite defauts from config.
 source $ETC/drdbs.conf
 EXCLUDEFILE="$ETC/drdbs.exclude"
 
-ERROR=0
 
+# Go
+
+# Method that is called if an error occurs. $1 is the exit code of the program that ran last.
 exitOnErr() {
-	# TODO Find a better storage.
-	cp $LOGFILE /root/drdbs_failed.log
+	cp $LOGFILE "~/drdbs_failed_$(date +%Y-%m-%d_%H:%M:%S).log"
 	exit $1
 }
+
 
 echo "========================================================================" &> $LOGFILE
 echo " Backup created at `date` using rdiff-backup" &>> $LOGFILE
 echo "========================================================================" &>> $LOGFILE
 
-# Mount target if necessary
+
+# Mount target if necessary.
+# TODO: Check if mounted already.
 if [[ -n $MOUNTTARGETDEV ]]; then
 	echo "Mounting $MOUNTTARGETDEV at $TARGET" &>> $LOGFILE
 	mount $MOUNTTARGETDEV $TARGET &>> $LOGFILE
@@ -31,6 +40,7 @@ if [[ -n $MOUNTTARGETDEV ]]; then
 	echo "========================================================================" &>> $LOGFILE
 fi
 
+
 # Save the package list.
 echo "Replay your package list with the following command:" &>> $LOGFILE
 case $PACKAGEMANAGER in
@@ -39,7 +49,6 @@ case $PACKAGEMANAGER in
 		;;
 	pacman)
 		# In contrast to the yaourt line, this one skips foreign packages, probably installed form AUR
-		local LIST=pacman -Qqe | grep -vx "$(pacman -Qqm)"
 		echo "pacman -S --needed $(pacman -Qqe | grep -vx "$(pacman -Qqm)" | tr '\n' ' ')" &>> $LOGFILE
 		;;
 	aptitude)
@@ -57,6 +66,8 @@ if [[ $? -ne 0 ]]; then
 fi
 echo "========================================================================" &>> $LOGFILE
 
+
+# Handle includes / excludes.
 if [[ -f $EXCLUDEFILE ]]; then
 	EXCLUDE="--exclude-globbing-filelist $EXCLUDEFILE"
 	echo "Files excluded:" &>> $LOGFILE
@@ -66,19 +77,27 @@ else
 	EXCLUDE=""
 fi
 
+
 # Do the backup.
 rdiff-backup --backup-mode --print-statistics --verbosity 3 $EXCLUDE $SOURCE $TARGET &>> $LOGFILE
 if [[ $? -ne 0 ]]; then
 	exitOnErr $?
 fi
 echo "========================================================================" &>> $LOGFILE
-rdiff-backup --print-statistics --verbosity 3 --remove-older-than $KEEP $TARGET &>> $LOGFILE
-if [[ $? -ne 0 ]]; then
-	exitOnErr $?
-fi
-echo "========================================================================" &>> $LOGFILE
 
-# Unmount target if necessary
+
+# Remove backups older than the specified timeframe.
+if [[ -n $KEEP ]]; then
+	rdiff-backup --print-statistics --verbosity 3 --remove-older-than $KEEP $TARGET &>> $LOGFILE
+	if [[ $? -ne 0 ]]; then
+		exitOnErr $?
+	fi
+	echo "========================================================================" &>> $LOGFILE
+fi
+
+
+# Unmount target if necessary.
+# TODO: Unmount only if not mounted previously.
 if [[ -n $MOUNTTARGETDEV ]]; then
 	echo "Unmounting $TARGET" &>> $LOGFILE
 	sync
@@ -89,7 +108,12 @@ if [[ -n $MOUNTTARGETDEV ]]; then
 	echo "========================================================================" &>> $LOGFILE
 fi
 
-rm $LOGFILE
 
+# Cleanup.
 echo " Finished at `date`" &>> $LOGFILE
 echo "========================================================================" &>> $LOGFILE
+
+# Remove log file, if not set by the user.
+if [[ $LOGFILE -eq "/tmp/drdbs.log" ]]; then
+	rm $LOGFILE
+fi
