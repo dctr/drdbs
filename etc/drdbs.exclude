@@ -11,7 +11,7 @@
 - **/*.swp
 - **/desktop.ini
 - **/Thumbs.db
-- /media/BigFiles/DonotBackup
+- /media/Daten/Timeless
 - /var/cache/**
 - /var/lock/**
 - /var/run/**
@@ -19,9 +19,10 @@
 + /boot
 + /etc
 + /home
-+ /media/BigFiles
++ /media/Daten
 + /root
 + /srv
 + /usr/local
++ /usr/src
 + /var
 - **

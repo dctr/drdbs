@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # drdbs - dctr's rdiff-backup script
 # Please report issues to David Christ <david.christ@uni-trier.de>.
@@ -19,6 +19,7 @@ EXCLUDEFILE="$ETC/drdbs.exclude"
 
 # Method that is called if an error occurs. $1 is the exit code of the program that ran last.
 exitOnErr() {
+	# TODO: Mail output
 	cp $LOGFILE "~/drdbs_failed_$(date +%Y-%m-%d_%H:%M:%S).log"
 	exit $1
 }
@@ -70,7 +71,7 @@ echo "========================================================================" 
 # Handle includes / excludes.
 if [[ -f $EXCLUDEFILE ]]; then
 	EXCLUDE="--exclude-globbing-filelist $EXCLUDEFILE"
-	echo "Files excluded:" &>> $LOGFILE
+	echo "File includes/excludes:" &>> $LOGFILE
 	cat $EXCLUDEFILE &>> $LOGFILE
 	echo "========================================================================" &>> $LOGFILE
 else
@@ -79,6 +80,7 @@ fi
 
 
 # Do the backup.
+echo "rdiff-backup --backup-mode --print-statistics --verbosity 3 $EXCLUDE $SOURCE $TARGET" &>> $LOGFILE
 rdiff-backup --backup-mode --print-statistics --verbosity 3 $EXCLUDE $SOURCE $TARGET &>> $LOGFILE
 if [[ $? -ne 0 ]]; then
 	exitOnErr $?
@@ -88,6 +90,7 @@ echo "========================================================================" 
 
 # Remove backups older than the specified timeframe.
 if [[ -n $KEEP ]]; then
+	echo "rdiff-backup --print-statistics --verbosity 3 --remove-older-than $KEEP $TARGET" &>> $LOGFILE
 	rdiff-backup --print-statistics --verbosity 3 --remove-older-than $KEEP $TARGET &>> $LOGFILE
 	if [[ $? -ne 0 ]]; then
 		exitOnErr $?
