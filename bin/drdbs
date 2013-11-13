@@ -11,7 +11,7 @@ ETC="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../etc/"
 LOGFILE="/tmp/drdbs.log"
 
 # Overwrite defauts from config.
-source $ETC/drdbs.conf
+source $ETC/drdbs.conf || exitOnErr 2
 EXCLUDEFILE="$ETC/drdbs.exclude"
 
 
