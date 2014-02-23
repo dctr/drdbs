@@ -8,7 +8,8 @@
 ETC="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )/../etc/"
 
 # Defaults
-LOGFILE="/tmp/drdbs.log"
+LOGFILE="/tmp/drdbs.default.log"
+MAILSUBJECT="DRDBS Log"
 
 # Overwrite defauts from config.
 source $ETC/drdbs.conf || exitOnErr 2
@@ -19,8 +20,15 @@ EXCLUDEFILE="$ETC/drdbs.exclude"
 
 # Method that is called if an error occurs. $1 is the exit code of the program that ran last.
 exitOnErr() {
-	# TODO: Mail output
-	cp $LOGFILE "~/drdbs_failed_$(date +%Y-%m-%d_%H:%M:%S).log"
+	echo "ERROR while $2, exiting."
+	echo "========================================================================" &>> $LOGFILE
+	if [[ -n $MAILTO ]]; then
+		if [[ -x $(which mail) ]]; then
+			mail -s $MAILSUBJECT $MAILTO < $LOGFILE
+		fi
+	else
+		cp $LOGFILE "~/drdbs_failed_$(date +%Y-%m-%d_%H:%M:%S).log"
+	fi
 	exit $1
 }
 
@@ -33,39 +41,41 @@ echo "========================================================================" 
 # Mount target if necessary.
 # TODO: Check if mounted already.
 if [[ -n $MOUNTTARGETDEV ]]; then
-	echo "Mounting $MOUNTTARGETDEV at $TARGET" &>> $LOGFILE
-	mount $MOUNTTARGETDEV $TARGET &>> $LOGFILE
+	echo "Mounting $MOUNTTARGETDEV with $MOUNTTARGETOPTS at $TARGET" &>> $LOGFILE
+	mount $MOUNTTARGETOPTS $MOUNTTARGETDEV $TARGET &>> $LOGFILE
 	if [[ $? -ne 0 ]]; then
-		exitOnErr $?
+		exitOnErr $? "mounting target"
 	fi
 	echo "========================================================================" &>> $LOGFILE
 fi
 
 
-# Save the package list.
-echo "Replay your package list with the following command:" &>> $LOGFILE
-case $PACKAGEMANAGER in
-	yaourt)
-		echo "yaourt -S --needed $(yaourt -Qeq | tr '\n' ' ')" &>> $LOGFILE
-		;;
-	pacman)
-		# In contrast to the yaourt line, this one skips foreign packages, probably installed form AUR
-		echo "pacman -S --needed $(pacman -Qqe | grep -vx "$(pacman -Qqm)" | tr '\n' ' ')" &>> $LOGFILE
-		;;
-	aptitude)
-		echo "aptitude install $(aptitude search '~i !~M' | cut -d" " -f4 | sort -u | tr '\n' ' ')" &>> $LOGFILE
-		;;
-	apt)
-		echo "apt-get install $(apt-mark showmanual | tr '\n' ' ')" &>> $LOGFILE
-		;;
-	*)
-		echo "ERROR: Package manger not found."
-		;;
-esac
-if [[ $? -ne 0 ]]; then
-	exitOnErr $?
+if [[ -n $PACKAGEMANAGER ]]; then
+	# Save the package list.
+	echo "Replay your package list with the following command:" &>> $LOGFILE
+	case $PACKAGEMANAGER in
+		yaourt)
+			echo "yaourt -S --needed $(yaourt -Qeq | tr '\n' ' ')" &>> $LOGFILE
+			;;
+		pacman)
+			# In contrast to the yaourt line, this one skips foreign packages, probably installed form AUR
+			echo "pacman -S --needed $(pacman -Qqe | grep -vx "$(pacman -Qqm)" | tr '\n' ' ')" &>> $LOGFILE
+			;;
+		aptitude)
+			echo "aptitude install $(aptitude search '~i !~M' | cut -d" " -f4 | sort -u | tr '\n' ' ')" &>> $LOGFILE
+			;;
+		aptmark)
+			echo "apt-get install $(apt-mark showmanual | tr '\n' ' ')" &>> $LOGFILE
+			;;
+		*)
+			echo "ERROR: Specified package manger not found." &>> $LOGFILE
+			;;
+	esac
+	if [[ $? -ne 0 ]]; then
+		exitOnErr $? "generating package list"
+	fi
+	echo "========================================================================" &>> $LOGFILE
 fi
-echo "========================================================================" &>> $LOGFILE
 
 
 # Handle includes / excludes.
@@ -83,7 +93,7 @@ fi
 echo "rdiff-backup --backup-mode --print-statistics --verbosity 3 $EXCLUDE $SOURCE $TARGET" &>> $LOGFILE
 rdiff-backup --backup-mode --print-statistics --verbosity 3 $EXCLUDE $SOURCE $TARGET &>> $LOGFILE
 if [[ $? -ne 0 ]]; then
-	exitOnErr $?
+	exitOnErr $? "doing backup"
 fi
 echo "========================================================================" &>> $LOGFILE
 
@@ -93,7 +103,7 @@ if [[ -n $KEEP ]]; then
 	echo "rdiff-backup --print-statistics --verbosity 3 --remove-older-than $KEEP $TARGET" &>> $LOGFILE
 	rdiff-backup --print-statistics --verbosity 3 --remove-older-than $KEEP $TARGET &>> $LOGFILE
 	if [[ $? -ne 0 ]]; then
-		exitOnErr $?
+		exitOnErr $? "deleting old backups"
 	fi
 	echo "========================================================================" &>> $LOGFILE
 fi
@@ -106,7 +116,7 @@ if [[ -n $MOUNTTARGETDEV ]]; then
 	sync
 	umount $TARGET &>> $LOGFILE
 	if [[ $? -ne 0 ]]; then
-		exitOnErr $?
+		exitOnErr $? "unmounting target"
 	fi
 	echo "========================================================================" &>> $LOGFILE
 fi
@@ -117,7 +127,7 @@ echo " Finished at `date`" &>> $LOGFILE
 echo "========================================================================" &>> $LOGFILE
 
 # Remove log file, if not set by the user.
-if [[ $LOGFILE -eq "/tmp/drdbs.log" ]]; then
+if [[ $LOGFILE -eq /tmp/drdbs.default.log ]]; then
 	rm $LOGFILE
 fi
 
