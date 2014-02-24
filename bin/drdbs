@@ -127,7 +127,7 @@ echo " Finished at `date`" &>> $LOGFILE
 echo "========================================================================" &>> $LOGFILE
 
 # Remove log file, if not set by the user.
-if [[ $LOGFILE -eq /tmp/drdbs.default.log ]]; then
+if [ "$LOGFILE" = /tmp/drdbs.default.log ]; then
 	rm $LOGFILE
 fi
 
