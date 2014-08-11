@@ -90,8 +90,8 @@ fi
 
 
 # Do the backup.
-echo "rdiff-backup --backup-mode --print-statistics --verbosity 3 $EXCLUDE $SOURCE $TARGET" &>> $LOGFILE
-rdiff-backup --backup-mode --print-statistics --verbosity 3 $EXCLUDE $SOURCE $TARGET &>> $LOGFILE
+echo "rdiff-backup --backup-mode --print-statistics --verbosity 4 $EXCLUDE $SOURCE $TARGET" &>> $LOGFILE
+rdiff-backup --backup-mode --print-statistics --verbosity 4 $EXCLUDE $SOURCE $TARGET &>> $LOGFILE
 if [[ $? -ne 0 ]]; then
 	exitOnErr $? "doing backup"
 fi
@@ -100,8 +100,8 @@ echo "========================================================================" 
 
 # Remove backups older than the specified timeframe.
 if [[ -n $KEEP ]]; then
-	echo "rdiff-backup --print-statistics --verbosity 3 --remove-older-than $KEEP $TARGET" &>> $LOGFILE
-	rdiff-backup --print-statistics --verbosity 3 --remove-older-than $KEEP $TARGET &>> $LOGFILE
+	echo "rdiff-backup --print-statistics --verbosity 4 --remove-older-than $KEEP $TARGET" &>> $LOGFILE
+	rdiff-backup --print-statistics --verbosity 4 --remove-older-than $KEEP $TARGET &>> $LOGFILE
 	if [[ $? -ne 0 ]]; then
 		exitOnErr $? "deleting old backups"
 	fi
