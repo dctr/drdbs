@@ -24,7 +24,7 @@ exitOnErr() {
 	echo "========================================================================" &>> $LOGFILE
 	if [[ -n $MAILTO ]]; then
 		if [[ -x $(which mail) ]]; then
-			mail -s $MAILSUBJECT $MAILTO < $LOGFILE
+			mail -s "$MAILSUBJECT" $MAILTO < $LOGFILE
 		fi
 	else
 		cp $LOGFILE "~/drdbs_failed_$(date +%Y-%m-%d_%H:%M:%S).log"
